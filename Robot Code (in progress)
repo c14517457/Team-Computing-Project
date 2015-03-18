@@ -1,0 +1,43 @@
+
+#pragma config(Sensor, S1, lightSensor, sensorLightActive)
+#pragma config(Sensor, S2, sonarSensor, sensorSONAR)
+//function prototypes
+void turnleft(void);
+int lines(int);
+task main()
+{
+	int line_count = 0;
+
+	while(true)
+	{
+        if(SensorValue[lightSensor] > 45)
+        {
+            line_count = lines(line_count)
+        }//end if()
+	}//end outer while
+	nxtDisplayStringAt(0, 31, "Number of lines: %d", line_count);
+
+}
+
+void turnleft(void)
+{
+    motor[motorC] = 50; //turn the rig left 90 degrees
+	motor[motorA] = 0;
+	wait1Msec(700);
+
+}//end turnleft()
+
+int lines(line)
+{
+    waitmsec(1000);
+    if(SensorValue[lightSensor] > 45)
+    {
+        turnleft();
+    }//end if()
+
+    else
+    {
+        line = line++;
+    }//end else
+    return(line);
+}//end lines()
