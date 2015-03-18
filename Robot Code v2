@@ -1,0 +1,103 @@
+
+#pragma config(Sensor, S1, lightSensor, sensorLightActive)
+#pragma config(Sensor, S2, sonarSensor, sensorSONAR)
+
+//function prototypes
+void lines(int x_position, int y_position, int axis);
+void avoid_black(void);
+
+
+task main()
+{
+	int x_position, y_position, obj1_x_pos, obj1_y_pos, obj2_x_pos, obj2_y_pos, axis;
+	bool objs_detected;
+	x_position = y_position = 0;
+
+	while(objs_detected == 0)
+	{
+				motor[motorB] = 50;
+				motor[motorC] = 50;
+
+				//if light sensor detects black
+        if(SensorValue[lightSensor] < 45)
+        {
+        	lines( x_position, y_position, axis);
+        }//end if()
+
+        //if sonar sensor detects an object 13cm away
+        if(SensorValue[sonarSensor] < 13)
+        {
+        	obj1_x_pos = x_position;
+        	obj1_y_pos = y_position;
+  			}//end if()
+
+  			if(SensorValue[sonarSensor] < 13)
+        {
+        	obj2_x_pos = x_position;
+        	obj2_y_pos = y_position;
+  			}//end if()
+
+	}//end outer while
+
+	nxtDisplayStringAt(0, 31, "Object one is at: (%d,%d)", obj1_x_pos, obj1_y_pos);
+	nxtDisplayStringAt(0, 31, "Object two is at: (%d,%d)", obj2_x_pos, obj2_y_pos);
+}//end main()
+
+void lines(int x_position, int y_position, int axis)
+{
+   wait1Msec(100);
+  //if sensor value detects black
+	if(SensorValue[lightSensor] < 45)
+  {
+     	avoid_black();
+ 		 	axis++;
+
+     if(axis == 2)
+     {
+      	axis = 0;
+   	 }//end nested if()
+
+  }//end outer if()
+
+  else
+	{
+    //if moving along x axis
+    if( axis == 0)
+    {
+    	x_position++;
+    }//end if()
+
+   	//if moving along the y axis
+    if( axis == 1)
+    {
+   		y_position++;
+   	}//end if()
+
+  }//end else
+
+}//end lines()
+
+void avoid_black(void)
+{
+	//turn the rig left 90 degrees
+	motor[motorB] = 50;
+	motor[motorC] = -50;
+	wait1Msec(257);
+
+	//if light sensor still detects black
+	if(SensorValue[lightSensor] < 45)
+	{
+		//turn the rig right 180 degrees
+		motor[motorB] = -50;
+		motor[motorC] = 50;
+		wait1Msec(514);
+	}
+	//if light sensor still detects black
+	if(SensorValue[lightSensor] < 45)
+	{
+		//turn the rig right 90 degrees
+		motor[motorB] = -50;
+		motor[motorC] = 50;
+		wait1Msec(257);
+	}
+} //end turnleft()
