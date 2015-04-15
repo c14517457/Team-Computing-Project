@@ -1,0 +1,217 @@
+
+#pragma config(Sensor, S1, lightSensor, sensorLightActive)
+#pragma config(Sensor, S2, sonarSensor, sensorSONAR)
+
+//function prototypes
+void lines(int *x_position, int *y_position, int *direction, int *line_count);
+void avoid_black(int *direction);
+void increment_direction(int *x_position, int *y_position, int *direction, int *line_count);
+void sonardistance( int *x_position, int *y_position, int *direction);
+
+task main()
+{
+	int x_position, y_position, obj1_x_pos, obj1_y_pos, obj2_x_pos, obj2_y_pos, line_count, direction;
+	bool obj1_detected, obj2_detected;
+	x_position = y_position = 0;
+	sonarblocks = 1;
+	sonardistance = 13.5;
+	while(obj2_detected == false)
+	{
+			motor[motorB] = 25;
+			motor[motorC] = 25;
+				
+			//if light sensor detects black
+      if(SensorValue[lightSensor] < 45)
+      {
+      	lines( &x_position, &y_position, &direction, &line_count);
+      }//end if()
+			while(obj1_detected == false)
+			{
+				sonardistance( &x_position, &y_position, &direction);
+        //if sonar sensor detects an object
+        if(SensorValue[sonarSensor] < sonardistance)
+        {
+        		switch (direction)
+		 	 			{
+		 	 		//if it is facing the same position as it started with
+								case 0:
+						 		{
+				 		 				obj1_x_pos = x_position + sonarblocks;
+        						obj1_y_pos = y_position;
+        						obj1_detected = true;
+				 				}
+				 	 			//if it is facing 90 degrees left of starting position
+				 				case  1:
+				 		 		{
+				 		 				obj1_x_pos = x_position;
+        						obj1_y_pos = y_position + sonarblocks;
+        						obj1_detected = true;
+				 		 		}
+				 				//if it is facing 180 degrees away from the starting position
+				 	 			case 2:
+				 				{
+				 		 				obj1_x_pos = x_position - sonarblocks;
+        						obj1_y_pos = y_position;
+        						obj1_detected = true;
+				 	 			}
+				 		 		//if it is facing 90 degrees right of the starting position
+				 	 			case 3:
+				 	 			{
+				 		 				obj1_x_pos = x_position;
+        						obj1_y_pos = y_position - sonarblocks;
+        						obj1_detected = true;
+					 			}
+					 		}//end switch(direction)
+  				}//end if()
+  				
+  				sonarblocks = sonarblocks++;
+  				sonardistance = sonardistance + 13.5;
+  			}//end while
+
+  			if(SensorValue[sonarSensor] < 13.5 && obj1_detected == true)
+        
+        		obj2_x_pos = x_position + 1;
+        		obj2_y_pos = y_position + 1;
+
+        		obj2_detected = true;
+        	}//end inner if()
+
+        	else
+        	{
+        		break;
+        	}//end else
+
+  			}//end outer if()
+
+	}//end outer while
+
+
+	motor[motorB] = 0;
+	motor[motorC] = 0;
+
+	nxtDisplayStringAt(0, 20, "Object one is at: (%d,%d)", obj1_x_pos, obj1_y_pos);
+	nxtDisplayStringAt(0, 40, "Object two is at: (%d,%d)", obj2_x_pos, obj2_y_pos);
+	nxtDisplayStringAt(0, 60, "distance travelled: %d", line_count);
+	wait10Msec(100);
+}//end main()
+
+void lines(int *x_position, int *y_position, int *direction, int *line_count)
+{
+
+	wait10Msec(100);
+  //if light sensor still detects black
+	if(SensorValue[lightSensor] < 45)
+  {
+     	avoid_black( direction);
+			increment_direction( x_position, y_position, direction, line_count);
+  }//end outer if()
+
+}//end lines()
+
+//for avoiding the black squares and updating the direction
+void avoid_black(int *direction)
+{
+	bool no_black = false;
+	while( no_black == false)
+	{
+		//turn the rig left 90 degrees
+		motor[motorB] = 50;
+		motor[motorC] = -50;
+		wait1Msec(257);
+		direction++;
+		//if the sensor doesn't detect black
+		if(SensorValue[lightSensor] > 45)
+		{
+			no_black = true;
+		}//end if
+
+		if(direction == 4)
+		{
+			*(direction) = 0;
+		}//end if()
+
+	}//end while()
+
+} //end avoid_black()
+
+//for choosing which direction on the grid to increment
+void increment_direction(int *x_position, int *y_position, int *direction, int *line_count)
+{
+		switch (direction)
+ 	 	{
+ 	 		//if it is facing the same position as it started with
+				case 0:
+		 		{
+ 		 				x_position++;
+ 				}
+ 	 			//if it is facing 90 degrees left of starting position
+ 				case  1:
+ 		 		{
+ 		 				y_position++;
+ 		 		}
+ 				//if it is facing 180 degrees away from the starting position
+ 	 			case 2:
+ 				{
+ 		 				x_position--;
+ 	 			}
+ 		 		//if it is facing 90 degrees right of the starting position
+ 	 			case 3:
+ 	 			{
+ 		 				y_position--;
+	 			}
+
+ 		 	}//end switch
+
+ 			line_count++;
+}//end increment direction()
+
+/*
+find blocks, avoid black cells
+return to start, ignore black cells
+go to nearest block, ignore black cells
+*/
+
+void sonardistance( int *x_position, int *y_position, int *direction);
+{
+		int sonarblocks = 1;
+		int sonardistance = 13.5;
+		
+		while(
+				//if sonar sensor detects an object
+        if(SensorValue[sonarSensor] < sonardistance)
+        {
+        		switch (direction)
+		 	 			{
+		 	 					//if it is facing the same position as it started with
+								case 0:
+						 		{
+				 		 				obj1_x_pos = x_position + sonarblocks;
+        						obj1_y_pos = y_position;
+        						obj1_detected = true;
+				 				}
+				 	 			//if it is facing 90 degrees left of starting position
+				 				case  1:
+				 		 		{
+				 		 				obj1_x_pos = x_position;
+        						obj1_y_pos = y_position + sonarblocks;
+        						obj1_detected = true;
+				 		 		}
+				 				//if it is facing 180 degrees away from the starting position
+				 	 			case 2:
+				 				{
+				 		 				obj1_x_pos = x_position - sonarblocks;
+        						obj1_y_pos = y_position;
+        						obj1_detected = true;
+				 	 			}
+				 		 		//if it is facing 90 degrees right of the starting position
+				 	 			case 3:
+				 	 			{
+				 		 				obj1_x_pos = x_position;
+        						obj1_y_pos = y_position - sonarblocks;
+        						obj1_detected = true;
+					 			}
+					 		}//end switch(direction)
+  				}//end if()
+  				
+  				sonarblocks = sonarblocks++;
+  				sonardistance = sonardistance + 13.5;
