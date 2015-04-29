@@ -1,0 +1,424 @@
+
+#pragma config(Sensor, S1, lightSensor, sensorLightActive)
+#pragma config(Sensor, S2, sonarSensor, sensorSONAR)
+
+//function prototypes
+void avoid_edge(int *x_position, int *y_position, int *direction);
+void lines(int *x_position, int *y_position, int *direction, int *line_count);
+void avoid_black(int *direction);
+void turn_left(int *direction);
+void turn_right(int *direction);
+void increment_direction(int *x_position, int *y_position, int *direction, int *line_count);
+bool sonar_detection(int *x_position, int *y_position, int *direction, int *obj1_y_pos, int *obj1_x_pos, int *obj2_y_pos, int *obj2_x_pos, bool *obj1_detected);
+void return_to_start(int *x_position, int *y_position, int *direction, int *line_count);
+void obj_distance(int *near_obj_y_pos, int *near_obj_x_pos, int *obj1_y_pos, int *obj1_x_pos, int *obj2_y_pos, int *obj2_x_pos);
+void move_to_obj(int *x_position, int *y_position, int *direction, int *line_count, int *near_obj_y_pos, int *near_obj_x_pos);
+
+
+
+main()
+{
+	int x_position, y_position, obj1_x_pos, obj1_y_pos, obj2_x_pos, obj2_y_pos, near_obj_y_pos, near_obj_x_pos, line_count, direction;
+	bool obj1_detected, obj2_detected;
+	x_position = y_position = direction = 0;
+
+	while(obj2_detected == false)
+	{
+        avoid_edge( &x_position, &y_position, &direction);
+        
+        motor[motorB] = 25;
+        motor[motorC] = 25;
+
+        //if light sensor detects black
+        if(SensorValue[lightSensor] < 45)
+        {
+            
+      		lines( &x_position, &y_position, &direction, &line_count);
+            
+            //detecting the objects using the sonar sensor
+            if(obj1_detected == false)
+            {
+                obj1_detected = sonar_detection(&x_position, &y_position, &direction, &obj1_y_pos, &obj1_x_pos, &obj2_y_pos, &obj2_x_pos, &obj1_detected);
+            }//end inner if
+
+            else
+            {
+                obj2_detected = sonar_detection(&x_position, &y_position, &direction, &obj1_y_pos, &obj1_x_pos, &obj2_y_pos, &obj2_x_pos, &obj1_detected);
+            }//end else
+            
+  		}//end if()
+        
+	}//end while
+    
+    //returning to (0,0), the starting point
+    return_to_start(&x_position, &y_position, &direction, &line_count);
+    
+    //computing the nearest object, function within moves to nearest object
+    obj_distance(&near_obj_y_pos, &near_obj_x_pos, &obj1_y_pos, &obj1_x_pos, &obj2_y_pos, &obj2_x_pos);
+	
+    //moving to the nearest object
+    move_to_obj(&x_position, &y_position, &direction, &line_count, &near_obj_y_pos, &near_obj_x_pos);
+    
+	nxtDisplayStringAt(0, 60, "Distance travelled: %d blocks", line_count);
+	wait1Msec(1000);
+}//end main()
+
+
+
+
+
+//To ensure the rig doesn't move out of the area
+void avoid_edge(int *x_position, int *y_position, int *direction)
+{
+    if(0 > *(x_position) > 9)
+    {
+        turn_right(direction);
+    }//end if
+        
+    if(-3 > *(y_position))
+    {
+        turn_left(direction);
+    }//end if
+        
+    else if(*(y_position) > 3)
+    {
+        turn_right(direction);
+    }//end if
+}
+
+
+
+//when the light sensor detects black
+void lines(int *x_position, int *y_position, int *direction, int *line_count)
+{
+
+    wait1Msec(1000);
+    //if light sensor still detects black
+	if(SensorValue[lightSensor] < 45)
+    {
+        avoid_black(direction);
+        increment_direction(x_position, y_position, direction, line_count);
+    }//end if()
+    
+    else
+    {
+        increment_direction(x_position, y_position, direction, line_count);
+    }//end else
+}//end lines()
+
+
+
+//for avoiding the black squares and updating the direction
+void avoid_black(int *direction)
+{
+    int rand = random(1);
+	bool no_black = false;
+	while( no_black == false)
+	{
+        switch(rand)
+        {
+            case 0:
+            {
+                turn_left(direction);
+            }
+            case 1:
+            {
+                turn_right(direction);
+            }
+        }//end switch
+        
+		//if the light sensor doesn't detect black
+		if(SensorValue[lightSensor] > 45)
+		{
+			no_black = true;
+		}//end if
+        
+	}//end while()
+
+} //end avoid_black()
+
+
+
+void turn_left(int *direction)
+{
+    //move the rig backwards
+    motor[motorB] = -25;
+    motor[motorC] = -25;
+    wait1Msec(100);
+
+    //turn the rig left 90 degrees
+    motor[motorB] = 50;
+    motor[motorC] = -50;
+    wait1Msec(257);
+    
+    motor[motorB] = 0;
+    motor[motorc] = 0;
+    wait1Msec(100);
+    *(direction)++;
+
+    if(*(direction) == 4)
+    {
+        *(direction) = 0;
+    }//end if( )
+
+}//end turn_left
+
+
+
+void turn_right(int *direction)
+{
+    //move the rig backwards
+    motor[motorB] = -25;
+    motor[motorC] = -25;
+    wait1Msec(100);
+
+    //turn the rig right 90 degrees
+    motor[motorB] = -50;
+    motor[motorC] = 50;
+    wait1Msec(257);
+    
+    motor[motorB] = 0;
+    motor[motorc] = 0;
+    wait1Msec(100);
+    *(direction)--;
+
+    if(*(direction) == -1)
+    {
+        *(direction) = 3;
+    }//end if( )
+
+}//end turn_right
+
+
+
+//for choosing which direction on the grid to increment
+void increment_direction(int *x_position, int *y_position, int *direction, int *line_count)
+{
+    switch (*(direction))
+    {
+        //if it is facing the same position as it started with
+        case 0:
+        {
+            *(x_position)++;
+        }
+        //if it is facing 90 degrees left of starting position
+        case  1:
+        {
+            *(y_position)++;
+        }
+        //if it is facing 180 degrees away from the starting position
+        case 2:
+        {
+            *(x_position)--;
+        }
+        //if it is facing 90 degrees right of the starting position
+        case 3:
+        {
+            *(y_position)--;
+        }
+    }//end switch
+
+    *(line_count)++;
+}//end increment direction()
+
+
+
+bool sonar_detection(int *x_position, int *y_position, int *direction, int *obj1_y_pos, int *obj1_x_pos, int *obj2_y_pos, int *obj2_x_pos, bool *obj1_detected)
+{
+    int sonarblocks, sonardistance, obj_x_pos, obj_y_pos;
+    bool obj_detected, return_variable;
+    sonarblocks = 1;
+    sonardistance = 13.5;
+    for(int i=0; i<9; i++)
+    {
+        //if sonar sensor detects an object
+        if(SensorValue[sonarSensor] < sonardistance)
+        {
+            switch (*(direction))
+            {
+                //if it is facing the same position as it started with
+                case 0:
+                {
+                obj_x_pos = *(x_position) + sonarblocks;
+                obj_y_pos = *(y_position);
+                obj_detected = true;
+                }
+                //if it is facing 90 degrees left of starting position
+                case  1:
+                {
+                    obj_x_pos = *(x_position);
+                    obj_y_pos = *(y_position) + sonarblocks;
+                    obj_detected = true;
+                }
+                //if it is facing 180 degrees away from the starting position
+                case 2:
+                {
+                    obj_x_pos = *(x_position) - sonarblocks;
+                    obj_y_pos = *(y_position);
+                    obj_detected = true;
+                }
+                //if it is facing 90 degrees right of the starting position
+                case 3:
+                {
+                    obj_x_pos = *(x_position);
+                    obj_y_pos = *(y_position) - sonarblocks;
+                    obj_detected = true;
+                }
+            }//end switch(direction)
+        }//end if()
+        
+    sonarblocks = sonarblocks++;
+    sonardistance = sonardistance + 13.5;
+    }//end for
+
+    if(obj_detected == true)
+    {
+        return_variable = true;
+        
+        if(*(obj1_detected) == true)
+        {
+            *(obj2_x_pos) = obj_x_pos;
+            *(obj2_y_pos) = obj_y_pos;
+        }//end inner if
+        
+        else
+        {
+            *(obj1_x_pos) = obj_x_pos;
+            *(obj1_y_pos) = obj_y_pos;
+        }//end else
+    }//end if
+
+    else
+    {
+        return_variable = false;
+    }//end else
+    
+    return(return_variable);
+}//end sonar_distance
+
+
+
+void return_to_start(int *x_position, int *y_position, int *direction, int *line_count)
+{
+    //moving the rig down the x axis
+    while(*(x_position) > 0)
+    {
+        //turning the rig to move down the x axis
+        while(*(direction) != 2)
+        {
+           turn_right(direction);
+        }//end while
+        
+        //altering position variables and incrementing line_count
+        increment_direction( x_position, y_position, direction, line_count);
+    }//end while
+    
+    //moving the rig on the y axis
+    while(*(y_position) > 0)
+    {
+        if(y_position > 0)
+        {
+            //turning the rig to move down the y axis
+            while(*(direction) != 3)
+            {
+               turn_right(direction);
+            }//end while
+            
+        }//end if
+        
+        else
+        {
+            //turning the rig to move up the y axis
+             while(*(direction) != 1)
+            {
+               turn_left(direction);
+            }//end while
+        }//end else
+        
+        increment_direction( x_position, y_position, direction, line_count);
+    }//end while
+    
+}//end return_to_start
+
+
+
+//using part of pythagoras' theorem to compute the nearest object
+void obj_distance(int *near_obj_y_pos, int *near_obj_x_pos, int *obj1_y_pos, int *obj1_x_pos, int *obj2_y_pos, int *obj2_x_pos)
+{
+    float temp, obj1_path, obj2_path;
+    
+    //checking if object 1's y value is minus, and if so changing it's value to a plus
+    temp = *(obj1_y_pos);
+    if( temp < 0)
+    {
+        temp = (temp * -1);
+    }//end if
+    
+    obj1_path = ( ( *(obj1_x_pos) * *(obj1_x_pos) ) + ( temp * temp) );
+    
+    //checking if object 2's y value is minus, and if so changing it's value to a plus
+    temp = *(obj2_y_pos);
+    if( temp < 0)
+    {
+        temp = (temp * -1);
+    }//end if
+    
+    obj2_path = ( ( *(obj2_x_pos) * *(obj2_x_pos) ) + ( temp * temp) );
+    
+    if( obj1_path > obj2_path)
+    {
+        *(near_obj_y_pos) = *(obj1_y_pos);
+        *(near_obj_x_pos) = *(obj1_x_pos);
+    }//end if
+    
+    else
+    {
+        *(near_obj_y_pos) = *(obj2_y_pos);
+        *(near_obj_x_pos) = *(obj2_x_pos);
+    }//end if
+
+}//end obj_distance
+
+
+
+void move_to_obj(int *x_position, int *y_position, int *direction, int *line_count, int *near_obj_y_pos, int *near_obj_x_pos)
+{
+    //moving the rig to the nearest object's y co-ordinate
+    while(*(y_position) != *(near_obj_y_pos))
+    {
+        if(*(near_obj_y_pos) > 0)
+        {
+            //turning the rig to move up the y axis
+            while(*(direction) != 1)
+            {
+               turn_left(direction);
+            }//end while
+            
+        }//end if
+        
+        else
+        {
+            //turning the rig to move down the y axis
+             while(*(direction) != 3)
+            {
+               turn_right(direction);
+            }//end while
+        }//end else
+        
+        increment_direction( x_position, y_position, direction, line_count);
+    }//end while
+    
+     //moving the rig to the nearest object's x co-ordinate
+    while(*(x_position) < *(near_obj_x_pos) - 1)
+    {
+        //turning the rig to move down the x axis
+        while(*(direction) != 0)
+        {
+           turn_right(direction);
+        }//end while
+        
+        //altering position variables and incrementing line_count
+        increment_direction( x_position, y_position, direction, line_count);
+    }//end while
+    
+}//end move_to_obj
